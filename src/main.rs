@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use linked_hash_map::LinkedHashMap;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 struct Orders {
@@ -7,12 +8,23 @@ struct Orders {
 }
 
 fn main() {
+  let mut labels: linked_hash_set::LinkedHashSet<String> =
+    linked_hash_set::LinkedHashSet::new();
+  let mut rows: Vec<LinkedHashMap<String, String>> = Vec::new();
+
   let mut cursor: Option<String> = None;
   let mut next_page_eh = true;
   while next_page_eh {
     let orders = orders_call(&cursor).expect("Request for orders failed");
     let filtered_orders = filter_orders(&orders.result);
-    println!("{:#?}", filtered_orders);
+    let cur_rows = parse_orders(&filtered_orders);
+
+    for row in cur_rows.iter() {
+      for (label, _) in row {
+        labels.insert_if_absent(label.to_owned());
+      }
+      rows.push(row.clone());
+    }
 
     next_page_eh = orders.pagination["hasNextPage"]
       .as_bool()
@@ -26,6 +38,9 @@ fn main() {
       );
     }
   }
+
+  println!("{:#?}", labels);
+  println!("{:#?}", rows);
 }
 
 fn orders_call(
@@ -44,7 +59,7 @@ fn orders_call(
     .header(reqwest::header::CONTENT_TYPE, "application/json")
     .header(
       "Authorization",
-      "Bearer 87d60348-77e1-4345-af4e-fb238c5fc4c0",
+      "Bearer *paste api token*",
     )
     .send()?
     .json()?;
@@ -68,19 +83,32 @@ fn filter_orders(orders: &Vec<serde_json::Value>) -> Vec<serde_json::Value> {
   return filtered_orders;
 }
 
-// fn parse_orders(
-//   url: &str,
-// ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-//   let client = reqwest::blocking::Client::new();
-//   let res: serde_json::Value = client
-//     .get(url)
-//     .header(reqwest::header::USER_AGENT, "CCYAA Order Exporter")
-//     .header(reqwest::header::CONTENT_TYPE, "application/json")
-//     .header(
-//       "Authorization",
-//       "Bearer 87d60348-77e1-4345-af4e-fb238c5fc4c0",
-//     )
-//     .send()?
-//     .json()?;
-//   return Ok(res);
-// }
+fn parse_orders(
+  orders: &Vec<serde_json::Value>,
+) -> Vec<LinkedHashMap<String, String>> {
+  let mut rows: Vec<LinkedHashMap<String, String>> = Vec::new();
+  for order in orders.iter() {
+    let line_items = order["lineItems"]
+      .as_array()
+      .expect("LineItems is not an array");
+    for line_item in line_items.iter() {
+      let customizations = line_item["customizations"]
+        .as_array()
+        .expect("customizations not array");
+      let mut row: LinkedHashMap<String, String> = LinkedHashMap::new();
+      for customization in customizations.iter() {
+        let label = customization["label"]
+          .as_str()
+          .expect("label not a string")
+          .to_owned();
+        let value = customization["value"]
+          .as_str()
+          .expect("label not a string")
+          .to_owned();
+        row.insert(label, value);
+      }
+      rows.push(row);
+    }
+  }
+  return rows;
+}
