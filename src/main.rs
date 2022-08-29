@@ -1,5 +1,5 @@
-use std::collections::HashSet;
 use linked_hash_map::LinkedHashMap;
+use std::collections::HashSet;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 struct Orders {
@@ -39,8 +39,11 @@ fn main() {
     }
   }
 
-  println!("{:#?}", labels);
-  println!("{:#?}", rows);
+  let write = write_to_file(&labels, &rows);
+  match write {
+    Ok(_) => println!("Write successful"),
+    Err(e) => panic!("Problem writing to file: {:?}", e),
+  }
 }
 
 fn orders_call(
@@ -111,4 +114,26 @@ fn parse_orders(
     }
   }
   return rows;
+}
+
+fn write_to_file(
+  labels: &linked_hash_set::LinkedHashSet<String>,
+  rows: &Vec<LinkedHashMap<String, String>>,
+) -> Result<(), Box<dyn std::error::Error>> {
+  let mut wtr = csv::Writer::from_path("export.csv")?;
+  wtr.write_record(labels)?;
+
+  for row in rows.iter() {
+    let mut write_row: Vec<String> = Vec::new();
+    for label in labels.iter() {
+      let mut value = "".to_owned();
+      if row.contains_key(label) {
+        value = row[label].clone();
+      }
+      write_row.push(value);
+    }
+    wtr.write_record(write_row)?;
+  }
+  wtr.flush()?;
+  return Ok(());
 }
