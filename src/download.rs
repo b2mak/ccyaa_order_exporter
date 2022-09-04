@@ -7,7 +7,7 @@ struct Orders {
   pagination: serde_json::Value,
 }
 
-pub fn download_to_csv() {
+pub async fn download_to_csv() {
   let mut labels: linked_hash_set::LinkedHashSet<String> =
     linked_hash_set::LinkedHashSet::new();
   let mut rows: Vec<LinkedHashMap<String, String>> = Vec::new();
@@ -15,7 +15,9 @@ pub fn download_to_csv() {
   let mut cursor: Option<String> = None;
   let mut next_page_eh = true;
   while next_page_eh {
-    let orders = orders_call(&cursor).expect("Request for orders failed");
+    let orders = orders_call(&cursor)
+      .await
+      .expect("Request for orders failed");
     let filtered_orders = filter_orders(&orders.result);
     let cur_rows = parse_orders(&filtered_orders);
 
@@ -46,7 +48,7 @@ pub fn download_to_csv() {
   }
 }
 
-fn orders_call(
+async fn orders_call(
   cursor: &Option<String>,
 ) -> Result<Orders, Box<dyn std::error::Error>> {
   let mut url: String =
@@ -55,17 +57,21 @@ fn orders_call(
     Some(x) => url.push_str(&format!("?cursor={}", x)),
     None => (),
   }
-  let client = reqwest::blocking::Client::new();
+  let client = reqwest::Client::new();
   let response = client
     .get(url)
     .header(reqwest::header::USER_AGENT, "CCYAA Order Exporter")
     .header(reqwest::header::CONTENT_TYPE, "application/json")
-    .header("Authorization", "Bearer TOKEN")
-    .send()?;
+    .header(
+      "Authorization",
+      "Bearer **api-token**",
+    )
+    .send()
+    .await?;
 
   match response.status() {
     reqwest::StatusCode::OK => {
-      return Ok(response.json()?);
+      return Ok(response.json().await?);
     }
     reqwest::StatusCode::UNAUTHORIZED => {
       panic!("Invalid API token");
