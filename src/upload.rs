@@ -10,7 +10,7 @@ pub async fn get_some_info() -> Result<(), gcp_auth::Error> {
 }
 
 async fn get_body(boundry: &str) -> Result<String, Box<dyn std::error::Error>> {
-  let file = tokio::fs::File::open("export.csv").await?;
+  let file_content = std::fs::read_to_string("./export.csv")?;
   let parents = serde_json::json!({
       "parents": [
         "17V1roZrPEcwF_CpJqc9gtaOsfSi5erdb",
@@ -23,9 +23,9 @@ async fn get_body(boundry: &str) -> Result<String, Box<dyn std::error::Error>> {
   body.push_str("\n");
   body.push_str(&format!("{}\n", parents.to_string()));
   body.push_str(&format!("--{}\n", boundry));
-  body.push_str("Content-Type: text/plain; charset=UTF-8\n");
+  body.push_str("Content-Type: text/csv; charset=UTF-8\n");
   body.push_str("\n");
-  body.push_str("Random Data\n");
+  body.push_str(&format!("{}\n", file_content));
   body.push_str(&format!("--{}--", boundry));
 
   return Ok(body);
@@ -83,26 +83,14 @@ async fn gdrive_files(
     .json::<HashMap<String, serde_json::Value>>()
     .await;
 
+  // This is mainly just for debugging so always output the response
   println!("Response {:?}", response);
-
-  // match response.status() {
-  //   reqwest::StatusCode::OK => {
-  //     println!("Request worked {:?}", response);
-  //     return Ok(());
-  //   }
-  //   reqwest::StatusCode::UNAUTHORIZED => {
-  //     panic!("Invalid API token");
-  //   }
-  //   _ => {
-  //     panic!("Unexpected status code");
-  //   }
-  // };
   return Ok(());
 }
 
 async fn get_auth_token() -> Result<gcp_auth::Token, gcp_auth::Error> {
   // `credentials_path` variable is the path for the credentials `.json` file.
-  let credentials_path = std::path::PathBuf::from("test/path");
+  let credentials_path = std::path::PathBuf::from("PATH");
   let service_account =
     gcp_auth::CustomServiceAccount::from_file(credentials_path)?;
   let authentication_manager =
