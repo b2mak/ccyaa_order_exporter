@@ -1,9 +1,9 @@
 mod gdrive;
 
 pub async fn create_or_update_file(
-  client: reqwest::Client,
-  filename: &str,
+  client: &reqwest::Client,
   folder_id: &str,
+  filename: &str,
 ) -> () {
   let token = gdrive::get_auth_token().await.expect("Auth error");
   let response = gdrive::list_files_in_shared_folder(client, &token, folder_id)
@@ -18,10 +18,13 @@ pub async fn create_or_update_file(
     }
   }
 
-  if existing_file.is_some() {
-    gdrive::update_file(client, &token).await;
-  } else {
-    gdrive::create_file(client, &token).await;
+  match existing_file {
+    Some(file) => gdrive::update_file(client, &token, &file.id)
+      .await
+      .expect("Update file blew up"),
+    None => gdrive::create_file(client, &token, folder_id, filename)
+      .await
+      .expect("Create file blew up"),
   }
 
   return ();

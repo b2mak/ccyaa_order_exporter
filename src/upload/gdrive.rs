@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 pub mod structs;
 
 pub async fn get_auth_token() -> Result<gcp_auth::Token, gcp_auth::Error> {
@@ -17,7 +16,7 @@ pub async fn get_auth_token() -> Result<gcp_auth::Token, gcp_auth::Error> {
 }
 
 pub async fn list_files_in_shared_folder(
-  client: reqwest::Client,
+  client: &reqwest::Client,
   token: &gcp_auth::Token,
   folder_id: &str,
 ) -> Result<structs::GetFilesResponse, reqwest::Error> {
@@ -39,24 +38,66 @@ pub async fn list_files_in_shared_folder(
 }
 
 pub async fn update_file(
-  client: reqwest::Client,
+  client: &reqwest::Client,
   token: &gcp_auth::Token,
   file_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+  let boundry = "xxxxxxxxxx";
+  // We aren't modifying any metadata, just updating the content
+  let metadata = serde_json::json!({});
+  let body = get_body(boundry, &metadata).await?;
+
+  make_request(
+    format!(
+      "https://www.googleapis.com/upload/drive/v2/files/{}?uploadType=multipart",
+      file_id,
+    ),
+    client,
+    token,
+    body,
+    boundry,
+  ).await?;
+
+  return Ok(());
 }
 
 pub async fn create_file(
-  client: reqwest::Client,
+  client: &reqwest::Client,
   token: &gcp_auth::Token,
   folder_id: &str,
+  filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
   let boundry = "xxxxxxxxxx";
-  let body = get_body(boundry).await?;
+  let metadata = serde_json::json!({
+      "parents": [
+        folder_id,
+      ],
+    "name": filename,
+  });
+  let body = get_body(boundry, &metadata).await?;
 
+  make_request(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+    client,
+    token,
+    body,
+    boundry,
+  )
+  .await?;
+
+  // If there was an issue make_request would have blown up
+  return Ok(());
+}
+
+async fn make_request(
+  uri: &str,
+  client: &reqwest::Client,
+  token: &gcp_auth::Token,
+  body: String,
+  boundry: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
   let response = client
-    .post(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
-    )
+    .post(uri)
     .header("Authorization", format!("Bearer {}", token.as_str()))
     .header(
       "Content-Type",
@@ -76,28 +117,21 @@ pub async fn create_file(
       panic!("Invalid API token");
     }
     _ => {
-      panic!("File creationg call failed");
+      panic!("File creation call failed");
     }
   };
 }
 
 async fn get_body(
   boundry: &str,
-  folder_id: &str,
-  filename: &str,
+  metadata: &serde_json::Value,
 ) -> Result<String, Box<dyn std::error::Error>> {
   let file_content = std::fs::read_to_string("./export.csv")?;
-  let parents = serde_json::json!({
-      "parents": [
-        folder_id,
-      ],
-      "name": filename,
-  });
 
   let mut body = format!("--{}\n", boundry);
   body.push_str("Content-Type: application/json; charset=UTF-8\n");
   body.push_str("\n");
-  body.push_str(&format!("{}\n", parents.to_string()));
+  body.push_str(&format!("{}\n", metadata.to_string()));
   body.push_str(&format!("--{}\n", boundry));
   body.push_str("Content-Type: text/csv; charset=UTF-8\n");
   body.push_str("\n");
