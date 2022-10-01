@@ -3,7 +3,7 @@ pub mod structs;
 pub async fn get_auth_token() -> Result<gcp_auth::Token, gcp_auth::Error> {
   // `credentials_path` variable is the path for the credentials `.json` file.
   let credentials_path = std::path::PathBuf::from(
-    "/Users/bmak/Code/secrets/ccyaa-order-exporter-1f2f0a6f85fe.json",
+    "credentials_path",
   );
   let service_account =
     gcp_auth::CustomServiceAccount::from_file(credentials_path)?;
@@ -46,17 +46,14 @@ pub async fn update_file(
   // We aren't modifying any metadata, just updating the content
   let metadata = serde_json::json!({});
   let body = get_body(boundry, &metadata).await?;
+  let url = format!(
+    "https://www.googleapis.com/upload/drive/v3/files/{}?uploadType=multipart",
+    file_id,
+  );
+  let response = make_request(client.patch(&url), token, body, boundry).await?;
 
-  make_request(
-    format!(
-      "https://www.googleapis.com/upload/drive/v2/files/{}?uploadType=multipart",
-      file_id,
-    ),
-    client,
-    token,
-    body,
-    boundry,
-  ).await?;
+  println!("File updated response:");
+  println!("{}", response.text().await?);
 
   return Ok(());
 }
@@ -75,29 +72,24 @@ pub async fn create_file(
     "name": filename,
   });
   let body = get_body(boundry, &metadata).await?;
+  let url =
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+  let response = make_request(client.post(url), token, body, boundry).await?;
 
-  make_request(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
-    client,
-    token,
-    body,
-    boundry,
-  )
-  .await?;
+  println!("File created response:");
+  println!("{}", response.text().await?);
 
   // If there was an issue make_request would have blown up
   return Ok(());
 }
 
 async fn make_request(
-  uri: &str,
-  client: &reqwest::Client,
+  request_builder: reqwest::RequestBuilder,
   token: &gcp_auth::Token,
   body: String,
   boundry: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-  let response = client
-    .post(uri)
+) -> Result<reqwest::Response, Box<dyn std::error::Error>> {
+  let response = request_builder
     .header("Authorization", format!("Bearer {}", token.as_str()))
     .header(
       "Content-Type",
@@ -110,14 +102,17 @@ async fn make_request(
 
   match response.status() {
     reqwest::StatusCode::OK => {
-      println!("File created");
-      return Ok(());
+      println!("Request Successful");
+      return Ok(response);
     }
     reqwest::StatusCode::UNAUTHORIZED => {
       panic!("Invalid API token");
     }
     _ => {
-      panic!("File creation call failed");
+      println!("Request Unsuccessful");
+      println!("Status {}", response.status());
+      println!("Error {}", response.text().await?);
+      panic!("Request Unsuccessful");
     }
   };
 }

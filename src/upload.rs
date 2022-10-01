@@ -19,12 +19,20 @@ pub async fn create_or_update_file(
   }
 
   match existing_file {
-    Some(file) => gdrive::update_file(client, &token, &file.id)
-      .await
-      .expect("Update file blew up"),
-    None => gdrive::create_file(client, &token, folder_id, filename)
-      .await
-      .expect("Create file blew up"),
+    Some(file) => {
+      println!("File with name {} found", filename);
+      println!("Updating file with file ID: {}", &file.id);
+      gdrive::update_file(client, &token, &file.id)
+        .await
+        .expect("Update file blew up");
+    }
+    None => {
+      println!("File with name {} NOT found", filename);
+      println!("Creating new file");
+      gdrive::create_file(client, &token, folder_id, filename)
+        .await
+        .expect("Create file blew up");
+    }
   }
 
   return ();
