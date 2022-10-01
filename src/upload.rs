@@ -9,6 +9,7 @@ pub async fn create_or_update_file(
   let response = gdrive::list_files_in_shared_folder(client, &token, folder_id)
     .await
     .expect("Get files error");
+
   // look at files
   let mut existing_file: Option<gdrive::structs::File> = None;
   for file in response.files.iter() {
@@ -22,16 +23,22 @@ pub async fn create_or_update_file(
     Some(file) => {
       println!("File with name {} found", filename);
       println!("Updating file with file ID: {}", &file.id);
-      gdrive::update_file(client, &token, &file.id)
+      let response = gdrive::update_file(client, &token, &file.id)
         .await
         .expect("Update file blew up");
+
+      println!("File updated response:");
+      println!("{:#?}", response);
     }
     None => {
       println!("File with name {} NOT found", filename);
       println!("Creating new file");
-      gdrive::create_file(client, &token, folder_id, filename)
+      let response = gdrive::create_file(client, &token, folder_id, filename)
         .await
         .expect("Create file blew up");
+
+      println!("File created response:");
+      println!("{:#?}", response);
     }
   }
 

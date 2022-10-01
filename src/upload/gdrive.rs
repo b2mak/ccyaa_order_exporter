@@ -34,6 +34,7 @@ pub async fn list_files_in_shared_folder(
     .json::<structs::GetFilesResponse>()
     .await?;
 
+  // TODO handle response and explain if error
   return Ok(response);
 }
 
@@ -41,7 +42,7 @@ pub async fn update_file(
   client: &reqwest::Client,
   token: &gcp_auth::Token,
   file_id: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<structs::UpdateFilesResponse, Box<dyn std::error::Error>> {
   let boundry = "xxxxxxxxxx";
   // We aren't modifying any metadata, just updating the content
   let metadata = serde_json::json!({});
@@ -50,12 +51,12 @@ pub async fn update_file(
     "https://www.googleapis.com/upload/drive/v3/files/{}?uploadType=multipart",
     file_id,
   );
-  let response = make_request(client.patch(&url), token, body, boundry).await?;
+  let response = make_request(client.patch(&url), token, body, boundry)
+    .await?
+    .json::<structs::UpdateFilesResponse>()
+    .await?;
 
-  println!("File updated response:");
-  println!("{}", response.text().await?);
-
-  return Ok(());
+  return Ok(response);
 }
 
 pub async fn create_file(
@@ -63,7 +64,7 @@ pub async fn create_file(
   token: &gcp_auth::Token,
   folder_id: &str,
   filename: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<structs::CreateFilesResponse, Box<dyn std::error::Error>> {
   let boundry = "xxxxxxxxxx";
   let metadata = serde_json::json!({
       "parents": [
@@ -74,13 +75,12 @@ pub async fn create_file(
   let body = get_body(boundry, &metadata).await?;
   let url =
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
-  let response = make_request(client.post(url), token, body, boundry).await?;
+  let response = make_request(client.post(url), token, body, boundry)
+    .await?
+    .json::<structs::CreateFilesResponse>()
+    .await?;
 
-  println!("File created response:");
-  println!("{}", response.text().await?);
-
-  // If there was an issue make_request would have blown up
-  return Ok(());
+  return Ok(response);
 }
 
 async fn make_request(
