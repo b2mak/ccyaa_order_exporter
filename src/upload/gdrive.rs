@@ -19,7 +19,7 @@ pub async fn list_files_in_shared_folder(
   client: &reqwest::Client,
   token: &gcp_auth::Token,
   folder_id: &str,
-) -> Result<structs::GetFilesResponse, reqwest::Error> {
+) -> Result<structs::GetFilesResponse, Box<dyn std::error::Error>> {
   let response = client
     .get("https://www.googleapis.com/drive/v3/files")
     .header(
@@ -30,12 +30,14 @@ pub async fn list_files_in_shared_folder(
     .header(reqwest::header::CONTENT_TYPE, "application/json")
     .query(&[("q", format!("'{}' in parents", folder_id))])
     .send()
-    .await?
-    .json::<structs::GetFilesResponse>()
     .await?;
 
-  // TODO handle response and explain if error
-  return Ok(response);
+  let validated_response = handle_response(response).await?;
+  return Ok(
+    validated_response
+      .json::<structs::GetFilesResponse>()
+      .await?,
+  );
 }
 
 pub async fn update_file(
@@ -100,21 +102,8 @@ async fn make_request(
     .send()
     .await?;
 
-  match response.status() {
-    reqwest::StatusCode::OK => {
-      println!("Request Successful");
-      return Ok(response);
-    }
-    reqwest::StatusCode::UNAUTHORIZED => {
-      panic!("Invalid API token");
-    }
-    _ => {
-      println!("Request Unsuccessful");
-      println!("Status {}", response.status());
-      println!("Error {}", response.text().await?);
-      panic!("Request Unsuccessful");
-    }
-  };
+  let validated_response = handle_response(response).await?;
+  return Ok(validated_response);
 }
 
 async fn get_body(
@@ -134,4 +123,24 @@ async fn get_body(
   body.push_str(&format!("--{}--", boundry));
 
   return Ok(body);
+}
+
+async fn handle_response(
+  response: reqwest::Response,
+) -> Result<reqwest::Response, Box<dyn std::error::Error>> {
+  match response.status() {
+    reqwest::StatusCode::OK => {
+      println!("Request Successful");
+      return Ok(response);
+    }
+    reqwest::StatusCode::UNAUTHORIZED => {
+      panic!("Invalid API token");
+    }
+    _ => {
+      println!("Request Unsuccessful");
+      println!("Status {}", response.status());
+      println!("Error {}", response.text().await?);
+      panic!("Request Unsuccessful");
+    }
+  };
 }
