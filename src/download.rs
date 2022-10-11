@@ -7,7 +7,7 @@ struct Orders {
   pagination: serde_json::Value,
 }
 
-pub async fn download_to_csv() {
+pub async fn download_to_csv(filename: &str) -> std::path::PathBuf {
   let mut labels: linked_hash_set::LinkedHashSet<String> =
     linked_hash_set::LinkedHashSet::new();
   let mut rows: Vec<LinkedHashMap<String, String>> = Vec::new();
@@ -41,9 +41,15 @@ pub async fn download_to_csv() {
     }
   }
 
-  let write = write_to_file(&labels, &rows);
+  let write = write_to_file(&labels, &rows, filename);
   match write {
-    Ok(_) => println!("Write successful"),
+    Ok(path) => {
+      println!(
+        "Write successful to {}",
+        path.to_str().expect("Couldn't convert path to string")
+      );
+      return path;
+    }
     Err(e) => panic!("Problem writing to file: {:?}", e),
   }
 }
@@ -62,10 +68,7 @@ async fn orders_call(
     .get(url)
     .header(reqwest::header::USER_AGENT, "CCYAA Order Exporter")
     .header(reqwest::header::CONTENT_TYPE, "application/json")
-    .header(
-      "Authorization",
-      "Bearer **api-token**",
-    )
+    .header("Authorization", "Bearer **api-token**")
     .send()
     .await?;
 
@@ -132,8 +135,10 @@ fn parse_orders(
 fn write_to_file(
   labels: &linked_hash_set::LinkedHashSet<String>,
   rows: &Vec<LinkedHashMap<String, String>>,
-) -> Result<(), Box<dyn std::error::Error>> {
-  let mut wtr = csv::Writer::from_path("export.csv")?;
+  filename: &str,
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+  let path = std::path::PathBuf::from(format!("/tmp/{}", filename));
+  let mut wtr = csv::Writer::from_path(&path)?;
   wtr.write_record(labels)?;
 
   for row in rows.iter() {
@@ -148,5 +153,6 @@ fn write_to_file(
     wtr.write_record(write_row)?;
   }
   wtr.flush()?;
-  return Ok(());
+
+  return Ok(path);
 }

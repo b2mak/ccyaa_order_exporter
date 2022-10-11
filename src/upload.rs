@@ -3,8 +3,28 @@ mod gdrive;
 pub async fn create_or_update_file(
   client: &reqwest::Client,
   folder_id: &str,
-  filename: &str,
+  filepath: &std::path::Path,
 ) -> () {
+  let filename_oss = filepath.file_name();
+  let filename_string = match filename_oss {
+    Some(os_string) => {
+      let string = os_string.to_str();
+      match string {
+        Some(string_type) => string_type,
+        None => panic!("Unable to parse OS string to string"),
+      }
+    }
+    None => {
+      let str_filepath = filepath.to_str();
+      match str_filepath {
+        Some(filepath_str) => panic!("Filename in {} not found", filepath_str),
+        None => {
+          panic!("Filname not found and filepath not parsable to a string")
+        }
+      }
+    }
+  };
+
   let token = gdrive::get_auth_token().await.expect("Auth error");
   let response = gdrive::list_files_in_shared_folder(client, &token, folder_id)
     .await
@@ -13,7 +33,7 @@ pub async fn create_or_update_file(
   // look at files
   let mut existing_file: Option<gdrive::structs::File> = None;
   for file in response.files.iter() {
-    if file.name == filename {
+    if file.name == filename_string {
       existing_file = Some(file.clone());
       break;
     }
@@ -21,9 +41,9 @@ pub async fn create_or_update_file(
 
   match existing_file {
     Some(file) => {
-      println!("File with name {} found", filename);
+      println!("File with name {} found", filename_string);
       println!("Updating file with file ID: {}", &file.id);
-      let response = gdrive::update_file(client, &token, &file.id)
+      let response = gdrive::update_file(client, &token, &file.id, &filepath)
         .await
         .expect("Update file blew up");
 
@@ -31,11 +51,17 @@ pub async fn create_or_update_file(
       println!("{:#?}", response);
     }
     None => {
-      println!("File with name {} NOT found", filename);
+      println!("File with name {} NOT found", filename_string);
       println!("Creating new file");
-      let response = gdrive::create_file(client, &token, folder_id, filename)
-        .await
-        .expect("Create file blew up");
+      let response = gdrive::create_file(
+        client,
+        &token,
+        folder_id,
+        filename_string,
+        &filepath,
+      )
+      .await
+      .expect("Create file blew up");
 
       println!("File created response:");
       println!("{:#?}", response);

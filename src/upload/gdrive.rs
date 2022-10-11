@@ -44,11 +44,12 @@ pub async fn update_file(
   client: &reqwest::Client,
   token: &gcp_auth::Token,
   file_id: &str,
+  filepath: &std::path::Path,
 ) -> Result<structs::UpdateFilesResponse, Box<dyn std::error::Error>> {
   let boundry = "xxxxxxxxxx";
   // We aren't modifying any metadata, just updating the content
   let metadata = serde_json::json!({});
-  let body = get_body(boundry, &metadata).await?;
+  let body = get_body(boundry, &metadata, filepath).await?;
   let url = format!(
     "https://www.googleapis.com/upload/drive/v3/files/{}?uploadType=multipart",
     file_id,
@@ -66,6 +67,7 @@ pub async fn create_file(
   token: &gcp_auth::Token,
   folder_id: &str,
   filename: &str,
+  filepath: &std::path::Path,
 ) -> Result<structs::CreateFilesResponse, Box<dyn std::error::Error>> {
   let boundry = "xxxxxxxxxx";
   let metadata = serde_json::json!({
@@ -74,7 +76,7 @@ pub async fn create_file(
       ],
     "name": filename,
   });
-  let body = get_body(boundry, &metadata).await?;
+  let body = get_body(boundry, &metadata, filepath).await?;
   let url =
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
   let response = make_request(client.post(url), token, body, boundry)
@@ -109,8 +111,9 @@ async fn make_request(
 async fn get_body(
   boundry: &str,
   metadata: &serde_json::Value,
+  filepath: &std::path::Path,
 ) -> Result<String, Box<dyn std::error::Error>> {
-  let file_content = std::fs::read_to_string("./export.csv")?;
+  let file_content = std::fs::read_to_string(filepath)?;
 
   let mut body = format!("--{}\n", boundry);
   body.push_str("Content-Type: application/json; charset=UTF-8\n");
