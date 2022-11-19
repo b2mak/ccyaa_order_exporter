@@ -1,0 +1,6 @@
+services:
+  ccyaa_exporter:
+    build:
+      context: ..
+      dockerfile: ./containerize/dockerfile
+    image: b2mak/ccyaa-exporter

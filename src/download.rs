@@ -80,7 +80,7 @@ async fn orders_call(
       panic!("Invalid API token");
     }
     _ => {
-      panic!("Unexpected status code");
+      panic!("Unexpected status code: {}", response.status());
     }
   };
 }
@@ -137,7 +137,7 @@ fn write_to_file(
   rows: &Vec<LinkedHashMap<String, String>>,
   filename: &str,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-  let path = std::path::PathBuf::from(format!("/tmp/{}", filename));
+  let path = std::path::PathBuf::from(format!("./{}", filename));
   let mut wtr = csv::Writer::from_path(&path)?;
   wtr.write_record(labels)?;
 
