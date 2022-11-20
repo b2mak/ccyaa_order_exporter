@@ -17,7 +17,12 @@ FROM debian:bullseye-slim as final
 RUN mkdir -p /ccyaa-exporter/secrets
 WORKDIR /ccyaa-exporter
 
-COPY ./secrets/ccyaa-order-exporter-1f2f0a6f85fe.json ./secrets/
+RUN mkdir ./ejson
+ADD https://github.com/Shopify/ejson/releases/download/v1.3.3/ejson_1.3.3_linux_amd64.tar.gz ./
+RUN tar -xvzf ejson_1.3.3_linux_amd64.tar.gz -C ./ejson
+RUN rm ejson_1.3.3_linux_amd64.tar.gz
+
+COPY ./config/secrets.ejson ./secrets/
 COPY --from=builder /ccyaa-exporter-build/target/release/ccyaa_order_exporter ./
 
 # Let's Encrypt CA update
