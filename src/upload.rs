@@ -2,6 +2,7 @@ mod gdrive;
 
 pub async fn create_or_update_file(
   client: &reqwest::Client,
+  auth_json: &str,
   folder_id: &str,
   filepath: &std::path::Path,
 ) -> () {
@@ -25,7 +26,7 @@ pub async fn create_or_update_file(
     }
   };
 
-  let token = gdrive::get_auth_token().await.expect("Auth error");
+  let token = gdrive::get_auth_token(auth_json).await.expect("Auth error");
   let response = gdrive::list_files_in_shared_folder(client, &token, folder_id)
     .await
     .expect("Get files error");

@@ -1,12 +1,9 @@
 pub mod structs;
 
-pub async fn get_auth_token() -> Result<gcp_auth::Token, gcp_auth::Error> {
-  // `credentials_path` variable is the path for the credentials `.json` file.
-  let credentials_path = std::path::PathBuf::from(
-    "credentials_path",
-  );
-  let service_account =
-    gcp_auth::CustomServiceAccount::from_file(credentials_path)?;
+pub async fn get_auth_token(
+  auth_json: &str,
+) -> Result<gcp_auth::Token, gcp_auth::Error> {
+  let service_account = gcp_auth::CustomServiceAccount::from_json(auth_json)?;
   let authentication_manager =
     gcp_auth::AuthenticationManager::from(service_account);
   let scopes = ["https://www.googleapis.com/auth/drive"];

@@ -7,7 +7,10 @@ struct Orders {
   pagination: serde_json::Value,
 }
 
-pub async fn download_to_csv(filename: &str) -> std::path::PathBuf {
+pub async fn download_to_csv(
+  filename: &str,
+  bearer_token: &str,
+) -> std::path::PathBuf {
   let mut labels: linked_hash_set::LinkedHashSet<String> =
     linked_hash_set::LinkedHashSet::new();
   let mut rows: Vec<LinkedHashMap<String, String>> = Vec::new();
@@ -15,7 +18,7 @@ pub async fn download_to_csv(filename: &str) -> std::path::PathBuf {
   let mut cursor: Option<String> = None;
   let mut next_page_eh = true;
   while next_page_eh {
-    let orders = orders_call(&cursor)
+    let orders = orders_call(bearer_token, &cursor)
       .await
       .expect("Request for orders failed");
     let filtered_orders = filter_orders(&orders.result);
@@ -55,6 +58,7 @@ pub async fn download_to_csv(filename: &str) -> std::path::PathBuf {
 }
 
 async fn orders_call(
+  bearer_token: &str,
   cursor: &Option<String>,
 ) -> Result<Orders, Box<dyn std::error::Error>> {
   let mut url: String =
@@ -68,7 +72,10 @@ async fn orders_call(
     .get(url)
     .header(reqwest::header::USER_AGENT, "CCYAA Order Exporter")
     .header(reqwest::header::CONTENT_TYPE, "application/json")
-    .header("Authorization", "Bearer **api-token**")
+    .header(
+      reqwest::header::AUTHORIZATION,
+      format!("Bearer {}", bearer_token),
+    )
     .send()
     .await?;
 
@@ -80,7 +87,7 @@ async fn orders_call(
       panic!("Invalid API token");
     }
     _ => {
-      panic!("Unexpected status code");
+      panic!("Unexpected status code: {}", response.status());
     }
   };
 }
@@ -137,7 +144,7 @@ fn write_to_file(
   rows: &Vec<LinkedHashMap<String, String>>,
   filename: &str,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-  let path = std::path::PathBuf::from(format!("/tmp/{}", filename));
+  let path = std::path::PathBuf::from(format!("./{}", filename));
   let mut wtr = csv::Writer::from_path(&path)?;
   wtr.write_record(labels)?;
 
