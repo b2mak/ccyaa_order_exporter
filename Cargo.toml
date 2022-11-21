@@ -15,3 +15,4 @@ csv = "1.1.6"
 gcp_auth = "0.7.3"
 tokio = { version = "1.21.0", features = ["full"] }
 substring = "1.4.5"
+clap = { version = "4.0.26", features = ["derive"] }

@@ -1,11 +1,27 @@
 mod download;
 mod upload;
 
+use clap::Parser;
 use std::collections::HashMap;
 use substring::Substring;
 
+#[derive(Parser)]
+#[command(name = "ccyaa_order_exporter")]
+#[command(author = "BMak <b2mak2@gmail.com>")]
+#[command(version = "0.0.1")]
+#[command(about = "Pulls orders from squarespace and uploads to google drive", long_about = None)]
+
+struct Cli {
+  /// Name of the file to be uploaded
+  filename: String,
+  /// ID of the folder to upload into
+  folder_id: String,
+}
+
 #[tokio::main]
 async fn main() {
+  let cli = Cli::parse();
+
   // Get secrets in memory
   println!("Input secrets json");
   let lines = std::io::stdin().lines();
@@ -23,13 +39,18 @@ async fn main() {
 
   let squarespace_auth = secrets["squarespace_api_token"].as_str().unwrap();
 
-  let filename = "test";
+  let filename = cli.filename;
   println!("Filename: {}", filename);
   let filepath = download::download_to_csv(&filename, &squarespace_auth).await;
 
   let client = reqwest::Client::new();
-  upload::create_or_update_file(&client, &google_auth, "folder id", &filepath)
-    .await;
+  upload::create_or_update_file(
+    &client,
+    &google_auth,
+    &(cli.folder_id),
+    &filepath,
+  )
+  .await;
 }
 
 async fn clear_leading_underscores(
