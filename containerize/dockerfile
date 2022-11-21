@@ -24,6 +24,8 @@ RUN rm ejson_1.3.3_linux_amd64.tar.gz
 
 COPY ./config/secrets.ejson ./secrets/
 COPY --from=builder /ccyaa-exporter-build/target/release/ccyaa_order_exporter ./
+COPY ./startup.sh ./startup.sh
+RUN chmod +x startup.sh
 
 # Let's Encrypt CA update
 RUN apt update && apt install -y ca-certificates
@@ -32,4 +34,4 @@ RUN useradd -M appuser
 RUN chown -R appuser /ccyaa-exporter
 
 USER appuser
-CMD ["./ccyaa_order_exporter"]
+ENTRYPOINT ["./startup.sh"]
