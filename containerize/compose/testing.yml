@@ -6,4 +6,4 @@ services:
     image: b2mak/ccyaa-exporter
     volumes:
       - "/opt/ejson/keys/a652c7481a75b0216018c4b48e864b5837be2f2a21ecf6b1531cd2d32574700a:/opt/ejson/keys/a652c7481a75b0216018c4b48e864b5837be2f2a21ecf6b1531cd2d32574700a"
-    command: [ "ccyaa_test_file.csv", "17V1roZrPEcwF_CpJqc9gtaOsfSi5erdb" ]
+    command: ["ccyaa_test_file.csv", "17V1roZrPEcwF_CpJqc9gtaOsfSi5erdb"]
