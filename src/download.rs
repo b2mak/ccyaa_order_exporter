@@ -4,7 +4,15 @@ use std::collections::HashSet;
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 struct Orders {
   result: Vec<serde_json::Value>,
-  pagination: serde_json::Value,
+  pagination: Pagination,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Pagination {
+  has_next_page: bool,
+  next_page_cursor: Option<String>,
+  next_page_url: Option<String>,
 }
 
 pub async fn download_to_csv(
@@ -31,16 +39,9 @@ pub async fn download_to_csv(
       rows.push(row.clone());
     }
 
-    next_page_eh = orders.pagination["hasNextPage"]
-      .as_bool()
-      .expect("hasNextPage is not a bool");
+    next_page_eh = orders.pagination.has_next_page;
     if next_page_eh {
-      cursor = Some(
-        orders.pagination["nextPageCursor"]
-          .as_str()
-          .expect("nextPageCursor is not a string")
-          .to_owned(),
-      );
+      cursor = orders.pagination.next_page_cursor;
     }
   }
 
