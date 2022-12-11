@@ -1,19 +1,7 @@
 use linked_hash_map::LinkedHashMap;
 use std::collections::HashSet;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-struct Orders {
-  result: Vec<serde_json::Value>,
-  pagination: Pagination,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct Pagination {
-  has_next_page: bool,
-  next_page_cursor: Option<String>,
-  next_page_url: Option<String>,
-}
+mod structs;
 
 pub async fn download_to_csv(
   filename: &str,
@@ -61,7 +49,7 @@ pub async fn download_to_csv(
 async fn orders_call(
   bearer_token: &str,
   cursor: &Option<String>,
-) -> Result<Orders, Box<dyn std::error::Error>> {
+) -> Result<structs::Orders, Box<dyn std::error::Error>> {
   let mut url: String =
     "https://api.squarespace.com/1.0/commerce/orders".to_owned();
   match cursor {
@@ -93,16 +81,12 @@ async fn orders_call(
   };
 }
 
-fn filter_orders(orders: &Vec<serde_json::Value>) -> Vec<serde_json::Value> {
+fn filter_orders(orders: &Vec<structs::Order>) -> Vec<structs::Order> {
   let skus: HashSet<&str> = vec!["SQ1360384"].into_iter().collect();
-  let mut filtered_orders: Vec<serde_json::Value> = Vec::new();
+  let mut filtered_orders: Vec<structs::Order> = Vec::new();
   for order in orders.iter() {
-    let line_items = order["lineItems"]
-      .as_array()
-      .expect("LineItems is not an array");
-    for line_item in line_items.iter() {
-      let sku = line_item["sku"].as_str().expect("No SKU found");
-      if skus.contains(sku) {
+    for line_item in &order.line_items {
+      if skus.contains(line_item.sku.as_str()) {
         filtered_orders.push(order.clone());
       }
     }
@@ -111,28 +95,16 @@ fn filter_orders(orders: &Vec<serde_json::Value>) -> Vec<serde_json::Value> {
 }
 
 fn parse_orders(
-  orders: &Vec<serde_json::Value>,
+  orders: &Vec<structs::Order>,
 ) -> Vec<LinkedHashMap<String, String>> {
   let mut rows: Vec<LinkedHashMap<String, String>> = Vec::new();
   for order in orders.iter() {
-    let line_items = order["lineItems"]
-      .as_array()
-      .expect("LineItems is not an array");
+    let line_items = &order.line_items;
     for line_item in line_items.iter() {
-      let customizations = line_item["customizations"]
-        .as_array()
-        .expect("customizations not array");
+      let customizations = &line_item.customizations;
       let mut row: LinkedHashMap<String, String> = LinkedHashMap::new();
       for customization in customizations.iter() {
-        let label = customization["label"]
-          .as_str()
-          .expect("label not a string")
-          .to_owned();
-        let value = customization["value"]
-          .as_str()
-          .expect("label not a string")
-          .to_owned();
-        row.insert(label, value);
+        row.insert(customization.label.clone(), customization.value.clone());
       }
       rows.push(row);
     }
