@@ -9,7 +9,7 @@ pub struct Orders {
 #[serde(rename_all = "camelCase")]
 pub struct Order {
   pub id: String,
-  pub order_number: u64,
+  pub order_number: String,
   // TODO: parse this into some usable time format instead of pure string
   pub created_on: String,
   pub modified_on: String,
@@ -20,12 +20,12 @@ pub struct Order {
   pub shipping_address: Option<Address>,
   // TODO: This can be an enum
   // Value may be: `PENDING`, `FULFILLED`, or `CANCELED`.
-  pub fulfilment_status: String,
+  pub fulfillment_status: String,
   pub line_items: Vec<LineItem>,
   pub internal_notes: Vec<InternalNote>,
   pub shipping_lines: Vec<ShippingLine>,
   pub discount_lines: Vec<DiscountLine>,
-  pub form_submission: Vec<FormSubmission>,
+  pub form_submission: Option<Vec<FormSubmission>>,
   pub fulfillments: Vec<Fulfillment>,
   pub subtotal: MonetaryValue,
   pub shipping_total: MonetaryValue,
@@ -36,7 +36,7 @@ pub struct Order {
   pub channel_name: String,
   pub external_order_reference: Option<String>,
   // TODO: make this a timestamp or something
-  pub fulfilled_on: String,
+  pub fulfilled_on: Option<String>,
   // TODO: make this an enum
   // Values may be `EXCLUSIVE` or `INCLUSIVE`.
   pub price_tax_interpretation: String
@@ -50,7 +50,7 @@ pub struct Fulfillment {
   // Name of the carrier handling the shipment.
   pub carrier_name: String,
   // Carrier's level of service for shipping.
-  pub service: String,
+  pub service: Option<String>,
   // Carrier's parcel tracking number.
   pub tracking_number: String,
   // URL provided by the carrier to track the shipment.
@@ -102,9 +102,9 @@ pub struct Address {
   pub address_1: String,
   pub address_2: Option<String>,
   pub city: String,
-  pub state: String,
+  pub state: Option<String>,
   pub country_code: String,
-  pub postal_code: String,
+  pub postal_code: Option<String>,
   pub phone: String,
 }
 
@@ -123,7 +123,7 @@ pub struct LineItem {
   pub quantity: u64,
   pub unit_price_paid: MonetaryValue,
   pub variant_options: Vec<VariantOption>,
-  pub customizations: Vec<Customization>,
+  pub customizations: Option<Vec<Customization>>,
   pub image_url: String,
   // TODO: I think this can also be an enum
   pub line_item_type: String,

@@ -70,7 +70,18 @@ async fn orders_call(
 
   match response.status() {
     reqwest::StatusCode::OK => {
-      return Ok(response.json().await?);
+      let text = response.text().await?;
+      // Some Deserializer.
+      let jd = &mut serde_json::Deserializer::from_str(&text);
+      let result: Result<structs::Orders, _> =
+        serde_path_to_error::deserialize(jd);
+
+      if result.is_err() {
+        println!("Body that has error:");
+        println!("{}", text);
+      }
+
+      return Ok(result.unwrap());
     }
     reqwest::StatusCode::UNAUTHORIZED => {
       panic!("Invalid API token");
@@ -102,11 +113,17 @@ fn parse_orders(
     let line_items = &order.line_items;
     for line_item in line_items.iter() {
       let customizations = &line_item.customizations;
-      let mut row: LinkedHashMap<String, String> = LinkedHashMap::new();
-      for customization in customizations.iter() {
-        row.insert(customization.label.clone(), customization.value.clone());
+      match customizations {
+        Some(p) => {
+          let mut row: LinkedHashMap<String, String> = LinkedHashMap::new();
+          for customization in p.iter() {
+            row
+              .insert(customization.label.clone(), customization.value.clone());
+          }
+          rows.push(row);
+        }
+        None => println!("No Customizations"),
       }
-      rows.push(row);
     }
   }
   return rows;
